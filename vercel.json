@@ -7,8 +7,13 @@
     },
     "frontend-meteor": {
       "root": "frontend-meteor",
-      "framework": "vite"
+      "framework": "vite",
+      "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
     }
   },
-  "rewrites": []
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": { "service": "backend-meteor" } },
+    { "source": "/socket.io/(.*)", "destination": { "service": "backend-meteor" } },
+    { "source": "/(.*)", "destination": { "service": "frontend-meteor" } }
+  ]
 }
