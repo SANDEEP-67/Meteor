@@ -1,54 +1,44 @@
 # Deploying Meteor on Vercel 🚀
 
-This repository is optimized for hosting on **Vercel**. You can deploy both the frontend and backend in just a few minutes.
+**Yes! You can deploy BOTH frontend and backend at the same time in ONE single Vercel project**, or as two separate projects if you prefer.
 
 ---
 
-## Architecture Overview
+## Option 1: Deploy Both at the Same Time in ONE Project (Easiest & Recommended)
 
-- **Frontend (`frontend-meteor`)**: React + Vite SPA. Built to static HTML/JS/CSS with client-side SPA routing (`vercel.json` rewrites).
-- **Backend (`backend-meteor`)**: Node.js + Express API. Optimized for Vercel Serverless Functions (`api/index.js` + `vercel.json`), with connection pooling for MongoDB and fallback polling for chat messages.
+This repository is pre-configured with a root `vercel.json`, `api/index.js`, and npm workspaces. When deployed together:
+- Both Frontend and Backend share the **exact same URL** (e.g. `https://your-app.vercel.app`).
+- **Zero CORS issues** because both run under the same origin.
+- No need to configure `VITE_API_URL` — the frontend automatically routes `/api/...` to the backend.
 
----
-
-## Option 1: Deploying as Two Vercel Projects (Recommended)
-
-This is the standard and cleanest way to deploy a decoupled Vite + Express application on Vercel.
-
-### Step 1: Deploy Backend (`backend-meteor`)
-1. In your [Vercel Dashboard](https://vercel.com/dashboard), click **"Add New..."** → **"Project"**.
+### Steps to Deploy Together:
+1. Go to your [Vercel Dashboard](https://vercel.com/dashboard) and click **"Add New..."** → **"Project"**.
 2. Select your `Meteor` repository.
-3. In the project configuration:
-   - **Project Name**: `meteor-backend` (or your choice)
-   - **Root Directory**: Click *Edit* and select **`backend-meteor`**
-4. Under **Environment Variables**, add:
-   - `MONGO_URI`: Your MongoDB Atlas connection string (or use the existing default).
-   - `JWT_SECRET`: A secure random string (e.g. `meteor_production_secret_key_99`).
-   - `FRONTEND_URLS`: (Optional) Comma-separated allowed URLs. *Note: All `*.vercel.app` domains are already automatically allowed by default.*
-5. Click **Deploy**.
-6. Note down your backend URL (e.g., `https://meteor-backend.vercel.app`).
+3. Keep the **Root Directory** as `./` (do not change it).
+4. Vercel automatically detects the build command (`npm run build`) and output directory (`frontend-meteor/dist`).
+5. Under **Environment Variables**, add:
+   - `MONGO_URI`: Your MongoDB Atlas connection string (or use the one in `.env.example`).
+   - `JWT_SECRET`: A secure secret string (e.g. `meteor_production_jwt_secret_123`).
+6. Click **Deploy**.
+7. Both your frontend UI and backend API are live under a single URL!
 
 ---
 
-### Step 2: Deploy Frontend (`frontend-meteor`)
-1. In the Vercel Dashboard, click **"Add New..."** → **"Project"**.
-2. Select the same `Meteor` repository again.
-3. In the project configuration:
-   - **Project Name**: `meteor-frontend` (or your choice)
-   - **Root Directory**: Click *Edit* and select **`frontend-meteor`**
-   - **Framework Preset**: Vite (detected automatically)
-4. Under **Environment Variables**, add:
-   - `VITE_API_URL`: The URL of your deployed backend from Step 1 (e.g., `https://meteor-backend.vercel.app` without trailing slash).
-5. Click **Deploy**.
-6. Your Meteor chat app is live!
+## Option 2: Deploy as Two Separate Vercel Projects (Alternative)
 
----
+If you prefer two separate Vercel projects (e.g. `meteor-frontend.vercel.app` and `meteor-backend.vercel.app`):
 
-## Option 2: Deploying from Monorepo Root
+### 1. Backend Project:
+- Import `Meteor` repo.
+- Set **Root Directory** to `backend-meteor`.
+- Add environment variables: `MONGO_URI` and `JWT_SECRET`.
+- Deploy and copy the URL (e.g. `https://meteor-backend.vercel.app`).
 
-If you deploy the repository root directly to Vercel:
-- Vercel will run `npm run build` from the root, which runs `npm --prefix frontend-meteor run build` and outputs the frontend bundle.
-- Configure `VITE_API_URL` in project settings to point to your backend.
+### 2. Frontend Project:
+- Import `Meteor` repo again.
+- Set **Root Directory** to `frontend-meteor`.
+- Add environment variable `VITE_API_URL` set to the backend URL above.
+- Deploy.
 
 ---
 
@@ -57,9 +47,9 @@ If you deploy the repository root directly to Vercel:
 To run locally on your computer:
 
 ```bash
-# 1. Start the Backend (Runs on http://localhost:8080 with WebSockets)
+# Start Backend (runs on http://localhost:8080 with WebSockets)
 npm run dev:backend
 
-# 2. In another terminal, start the Frontend (Runs on http://localhost:5173)
+# Start Frontend in another terminal (runs on http://localhost:5173)
 npm run dev:frontend
 ```
