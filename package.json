@@ -1,0 +1,12 @@
+{
+  "name": "meteor-chat",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Meteor Real-time Chat Web Application",
+  "scripts": {
+    "dev:frontend": "npm --prefix frontend-meteor run dev",
+    "dev:backend": "npm --prefix backend-meteor run dev",
+    "build:frontend": "npm --prefix frontend-meteor run build",
+    "build": "npm --prefix frontend-meteor run build"
+  }
+}

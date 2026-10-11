@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { Context } from "./ChatContextInstance";
 
+export { Context };
+
 export const ChatProvider = ({ children }) => {
+
   const [user, setUser] = useState(() => {
     try {
       const saved = localStorage.getItem("info");

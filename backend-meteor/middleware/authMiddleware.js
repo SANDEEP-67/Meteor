@@ -10,23 +10,28 @@ const protect = asyncHandler(async (req, res, next) => {
   ) {
     try {
       token = req.headers.authorization.split(" ")[1];
-      //Bearer afnsalfnalf
-      // [0]      [1]
+      const secret = process.env.JWT_SECRET || "sandeep-secret";
+      const decoded = jwt.verify(token, secret);
 
-      //decode and verify the token
-
-      const decode = jwt.verify(token, "sandeep-secret");
-
-      req.user = await User.findById(decode.id).select("-password");
-      next();
-    } catch (e) {
-      console.log(e);
+      req.user = await User.findById(decoded.id).select("-password");
+      if (!req.user) {
+        return res
+          .status(401)
+          .json({ message: "Not authorized, user not found" });
+      }
+      return next();
+    } catch (error) {
+      console.error("Auth token verification error:", error.message);
+      return res
+        .status(401)
+        .json({ message: "Not authorized, token invalid or expired" });
     }
   }
-  if (!token) {
-    res.status(401);
-    throw new Error("not authorized");
-  }
+
+  return res
+    .status(401)
+    .json({ message: "Not authorized, no token provided" });
 });
 
 module.exports = protect;
+

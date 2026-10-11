@@ -44,11 +44,6 @@ const Login = () => {
     }
   };
 
-  const handleGuestLogin = () => {
-    setEmail("guest@meteor.chat");
-    setPassword("123456");
-  };
-
   return (
     <form
       onSubmit={handleSubmit}
@@ -136,18 +131,6 @@ const Login = () => {
           </>
         )}
       </button>
-
-      {/* Quick Demo Helper */}
-      <div className="pt-2 flex items-center justify-between text-xs text-zinc-400">
-        <span>Trying it out?</span>
-        <button
-          type="button"
-          onClick={handleGuestLogin}
-          className="text-violet-400 hover:text-violet-300 font-medium transition-colors cursor-pointer"
-        >
-          Fill Demo Account
-        </button>
-      </div>
     </form>
   );
 };

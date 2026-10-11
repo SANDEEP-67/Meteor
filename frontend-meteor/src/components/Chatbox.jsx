@@ -94,16 +94,30 @@ const Chatbox = ({ fetchAgain, setFetchAgain }) => {
   useEffect(() => {
     if (!user) return;
 
-    socket = io(API_URL);
-    socket.emit("setup", user);
-    socket.on("connected", () => setSocketConnected(true));
-    socket.on("typing", () => setIsTyping(true));
-    socket.on("stop typing", () => setIsTyping(false));
+    try {
+      socket = io(API_URL || undefined, {
+        transports: ["websocket", "polling"],
+        reconnectionAttempts: 5,
+        timeout: 10000,
+      });
+
+      socket.emit("setup", user);
+      socket.on("connected", () => setSocketConnected(true));
+      socket.on("connect_error", () => {
+        setSocketConnected(false);
+      });
+      socket.on("typing", () => setIsTyping(true));
+      socket.on("stop typing", () => setIsTyping(false));
+    } catch (err) {
+      console.warn("Socket init error, falling back to polling:", err.message);
+      setSocketConnected(false);
+    }
 
     return () => {
-      socket.disconnect();
+      if (socket) socket.disconnect();
     };
   }, [user]);
+
 
   // Fetch messages when selected chat changes
   const fetchMessages = useCallback(async () => {
@@ -167,6 +181,17 @@ const Chatbox = ({ fetchAgain, setFetchAgain }) => {
     };
   }, [notification, fetchAgain, setFetchAgain, setNotification]);
 
+  // Polling fallback when WebSockets are disconnected or in serverless environment
+  useEffect(() => {
+    if (socketConnected || !selectedChat || !user?.token) return;
+
+    const pollInterval = setInterval(() => {
+      fetchMessages();
+    }, 4000);
+
+    return () => clearInterval(pollInterval);
+  }, [socketConnected, selectedChat, user?.token, fetchMessages]);
+
   // Send message
   const sendMessage = async (e, directContent = null) => {
     if (e) e.preventDefault();
@@ -174,7 +199,7 @@ const Chatbox = ({ fetchAgain, setFetchAgain }) => {
 
     if (!contentToSend || !contentToSend.trim()) return;
 
-    socket.emit("stop typing", selectedChat._id);
+    socket?.emit("stop typing", selectedChat._id);
     setTyping(false);
 
     try {
@@ -198,7 +223,7 @@ const Chatbox = ({ fetchAgain, setFetchAgain }) => {
         setNewMessage("");
       }
 
-      socket.emit("new message", data);
+      socket?.emit("new message", data);
       setMessages((prev) => [...prev, data]);
       setFetchAgain(!fetchAgain);
     } catch (err) {
@@ -214,7 +239,7 @@ const Chatbox = ({ fetchAgain, setFetchAgain }) => {
 
     if (!typing) {
       setTyping(true);
-      socket.emit("typing", selectedChat._id);
+      socket?.emit("typing", selectedChat._id);
     }
 
     const lastTypingTime = new Date().getTime();
@@ -223,7 +248,7 @@ const Chatbox = ({ fetchAgain, setFetchAgain }) => {
       const timeNow = new Date().getTime();
       const timeDiff = timeNow - lastTypingTime;
       if (timeDiff >= timerLength && typing) {
-        socket.emit("stop typing", selectedChat._id);
+        socket?.emit("stop typing", selectedChat._id);
         setTyping(false);
       }
     }, timerLength);

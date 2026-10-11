@@ -5,8 +5,7 @@ const asyncHandler = require("express-async-handler");
 
 // Function to find user and compare password
 const findUser = async (user, password) => {
-  console.log("User:", user.password, "Password:", password);
-
+  if (!user || !user.password) return false;
   return bcrypt.compare(password, user.password);
 };
 
@@ -15,34 +14,30 @@ const findUser = async (user, password) => {
 // If successful, it returns the user details along with a generated token
 const register = asyncHandler(async (req, res) => {
   const { name, email, pwd, pic } = req.body;
-  console.log(name, email, pwd, pic);
 
   if (!name || !email || !pwd) {
-    res.status(400);
-    throw new Error("Please Enter all the fields");
+    return res.status(400).json({ message: "Please Enter all the fields" });
   }
 
-  const userExists = await User.findOne({ email });
+  const userExists = await User.findOne({ email: email.toLowerCase() });
   if (userExists) {
-    res.status(400);
-    throw new Error("User already exists");
+    return res.status(400).json({ message: "User already exists with this email" });
   }
 
   // Hash the password using bcrypt
-  // The salt rounds are set to 10, which is a good default for security
   const salt = await bcrypt.genSalt(10);
   const password = await bcrypt.hash(pwd, salt);
 
   try {
     const user = await User.create({
       name,
-      email,
+      email: email.toLowerCase(),
       password,
       pic,
     });
 
     if (user) {
-      res.status(201).json({
+      return res.status(201).json({
         _id: user._id,
         name: user.name,
         email: user.email,
@@ -50,52 +45,59 @@ const register = asyncHandler(async (req, res) => {
         token: generate(user._id),
       });
     } else {
-      res.status(400);
-      throw new Error("Failed to create user");
+      return res.status(400).json({ message: "Failed to create user" });
     }
   } catch (error) {
-    res.status(500);
-    throw new Error("Server error");
+    console.error("User registration error:", error.message);
+    return res.status(500).json({ message: error.message || "Server error" });
   }
 });
 
 // Function to log in a user
-// It checks if the user exists, compares the provided password with the stored hashed password,
+// It checks if the user exists, compares the provided password with the stored hashed password
 const login = asyncHandler(async (req, res) => {
   const { email, pwd } = req.body;
   if (!email || !pwd) {
-    res.status(400);
-    throw new Error("Please Enter all the fields");
+    return res.status(400).json({ message: "Please Enter all the fields" });
   }
-  const user = await User.findOne({ email });
 
-  const passwordMatch = await findUser(user, pwd);
-  if (user && passwordMatch) {
-    res.status(200).json({
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      pic: user.pic,
-      token: generate(user._id),
-    });
+  const user = await User.findOne({ email: email.toLowerCase() });
+  if (!user) {
+    return res.status(401).json({ message: "Invalid email or password" });
   }
+
+  const passwordMatch = await bcrypt.compare(pwd, user.password);
+  if (!passwordMatch) {
+    return res.status(401).json({ message: "Invalid email or password" });
+  }
+
+  return res.status(200).json({
+    _id: user._id,
+    name: user.name,
+    email: user.email,
+    pic: user.pic,
+    token: generate(user._id),
+  });
 });
 
-// /user/ GET
+// /user/ GET - search users by name or email
 const allUser = asyncHandler(async (req, res) => {
-  const q = req.query.search
+  const search = req.query.search ? req.query.search.trim() : "";
+  const q = search
     ? {
         $or: [
-          { name: { $regex: req.query.search, $options: "i" } },
-          // { email: { $regex: req.query.search, $options: "i" } },
+          { name: { $regex: search, $options: "i" } },
+          { email: { $regex: search, $options: "i" } },
         ],
       }
     : {};
 
-  const usr = await User.find(q).find({ _id: { $ne: req.user._id } });
+  const users = await User.find(q)
+    .find({ _id: { $ne: req.user._id } })
+    .select("-password");
 
-  res.send(usr);
+  res.status(200).json(users);
 });
-//regex helps in finding and pattern matching in mongoDB it takes 2 thing $regex: query . $option
 
 module.exports = { register, login, allUser };
+

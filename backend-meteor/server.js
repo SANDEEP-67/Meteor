@@ -1,4 +1,3 @@
-
 require("dotenv").config();
 
 const express = require("express");
@@ -18,7 +17,7 @@ const allowedOrigins = (process.env.FRONTEND_URLS || "")
   .filter(Boolean);
 
 const isAllowedOrigin = (origin) => {
-  // Requests without an Origin header include curl and server-to-server calls.
+  // Requests without an Origin header include curl, server-to-server calls, and health checks.
   if (!origin) return true;
 
   const normalizedOrigin = origin.replace(/\/$/, "");
@@ -30,6 +29,14 @@ const isAllowedOrigin = (origin) => {
   ) {
     return true;
   }
+
+  // Any Vercel deployment preview or production domain
+  try {
+    const parsed = new URL(normalizedOrigin);
+    if (parsed.hostname.endsWith(".vercel.app")) {
+      return true;
+    }
+  } catch (e) {}
 
   // Configured production and preview frontend URLs
   return allowedOrigins.includes(normalizedOrigin);
@@ -51,19 +58,57 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
+// Ensure MongoDB is connected before handling requests (crucial for Vercel Serverless)
+app.use(async (req, res, next) => {
+  try {
+    await connect();
+    next();
+  } catch (error) {
+    console.error("Database connection middleware error:", error.message);
+    res.status(500).json({
+      error: "Database connection failed",
+      message: error.message,
+    });
+  }
+});
+
+// Root & Health check routes
+app.get("/", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Meteor Chat Backend API is running!",
+  });
+});
+
+app.get("/api/health", (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // API routes
 app.use("/api/user", userRouter);
 app.use("/api/chat", chatRouter);
 app.use("/api/message", messageRouter);
 
-app.get("/", (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: "Backend API is running!",
+// 404 Handler
+app.use((req, res, next) => {
+  res.status(404).json({
+    message: `Not Found - ${req.originalUrl}`,
   });
 });
 
-// Connect database before accepting requests
+// Global Error Handler
+app.use((err, req, res, next) => {
+  const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+  res.status(statusCode).json({
+    message: err.message,
+    stack: process.env.NODE_ENV === "production" ? null : err.stack,
+  });
+});
+
 const PORT = process.env.PORT || 8080;
 
 async function startServer() {
@@ -130,4 +175,11 @@ async function startServer() {
   }
 }
 
-startServer();
+// Start standalone HTTP/WebSocket server when executed directly (local dev / Docker / VM)
+if (!process.env.VERCEL && require.main === module) {
+  startServer();
+}
+
+// Export express app for Vercel Serverless Functions
+module.exports = app;
+

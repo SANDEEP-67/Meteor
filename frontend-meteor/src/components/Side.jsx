@@ -1,4 +1,4 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import {
@@ -47,16 +47,15 @@ const Side = () => {
     navigate("/");
   };
 
-  const handleSearch = async (e) => {
-    if (e) e.preventDefault();
-    if (!search.trim()) {
+  const handleSearchQuery = async (queryText) => {
+    const trimmed = (queryText !== undefined ? queryText : search).trim();
+    if (!trimmed) {
+      setSearchResult([]);
+      setLoading(false);
       return;
     }
 
-    if (!user?.token) {
-      alert("Please log in again.");
-      return;
-    }
+    if (!user?.token) return;
 
     setLoading(true);
     try {
@@ -67,7 +66,7 @@ const Side = () => {
       };
 
       const { data } = await axios.get(
-        `${API_URL}/api/user?search=${encodeURIComponent(search.trim())}`,
+        `${API_URL}/api/user?search=${encodeURIComponent(trimmed)}`,
         config
       );
 
@@ -78,6 +77,27 @@ const Side = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Search live as user types with smooth 250ms debounce
+  useEffect(() => {
+    const trimmed = search.trim();
+    if (!trimmed) {
+      setSearchResult([]);
+      setLoading(false);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      handleSearchQuery(trimmed);
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [search, user?.token]);
+
+  const handleSearch = (e) => {
+    if (e) e.preventDefault();
+    handleSearchQuery(search);
   };
 
   const getSender = (loggedUser, users = []) => {
@@ -479,7 +499,7 @@ const Side = () => {
               ) : (
                 <div className="text-center py-16 text-zinc-500 text-xs flex flex-col items-center gap-2">
                   <UserIcon className="w-8 h-8 text-zinc-600" />
-                  <span>Type a name or email and hit Search to find friends.</span>
+                  <span>Type a name or email to find people.</span>
                 </div>
               )}
             </div>
