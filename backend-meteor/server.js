@@ -72,7 +72,7 @@ app.use(async (req, res, next) => {
   }
 });
 
-// Root & Health check routes
+// Root & Health check routes (for FastCron / Uptime monitors)
 app.get("/", (req, res) => {
   res.status(200).json({
     success: true,
@@ -80,10 +80,11 @@ app.get("/", (req, res) => {
   });
 });
 
-app.get("/api/health", (req, res) => {
+app.get(["/health", "/api/health"], (req, res) => {
   res.status(200).json({
     status: "ok",
-    uptime: process.uptime(),
+    message: "Server is healthy",
+    uptime: `${Math.floor(process.uptime())}s`,
     timestamp: new Date().toISOString(),
   });
 });
