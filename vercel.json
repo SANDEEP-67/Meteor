@@ -1,9 +1,0 @@
-{
-  "outputDirectory": "frontend-meteor/dist",
-  "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/"
-    }
-  ]
-}
